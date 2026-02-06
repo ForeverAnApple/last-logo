@@ -1,0 +1,4 @@
+svgwrite
+lxml
+cairosvg
+pillow
