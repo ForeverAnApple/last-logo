@@ -16,9 +16,9 @@ def iso(x, y, z):
     return (px, py)
 
 
-def cube_edges(s):
-    """Return the 9 visible edges of an isometric cube as (start, end) pairs."""
-    v = {
+def cube_verts(s):
+    """Return named vertices of the isometric cube."""
+    return {
         "fbl": iso(0, 0, 0),
         "fbr": iso(s, 0, 0),
         "bbl": iso(0, s, 0),
@@ -27,45 +27,48 @@ def cube_edges(s):
         "btl": iso(0, s, s),
         "btr": iso(s, s, s),
     }
+
+
+def cube_hexagon(v):
+    """The 6 outer vertices forming the cube silhouette (a hexagon)."""
+    return [v["btr"], v["ftr"], v["fbr"], v["fbl"], v["bbl"], v["btl"]]
+
+
+def cube_edges(v):
+    """Return the 9 visible edges of an isometric cube as (start, end) pairs."""
     return [
-        # # Hexagon outline
-        # (v["btr"], v["ftr"]),
-        # (v["ftr"], v["fbr"]),
-        # (v["fbr"], v["fbl"]),
-        # (v["fbl"], v["bbl"]),
-        # (v["bbl"], v["btl"]),
-        # (v["btl"], v["btr"]),
-        # # 3 internal edges from center
-        # (v["ftl"], v["fbl"]),
-        # (v["ftl"], v["ftr"]),
-        # (v["ftl"], v["btl"]),
+        # Hexagon outline
+        (v["btr"], v["ftr"]),
+        (v["ftr"], v["fbr"]),
+        (v["fbr"], v["fbl"]),
+        (v["fbl"], v["bbl"]),
+        (v["bbl"], v["btl"]),
+        (v["btl"], v["btr"]),
+        # 3 internal edges from center
+        (v["ftl"], v["fbl"]),
+        (v["ftl"], v["ftr"]),
+        (v["ftl"], v["btl"]),
     ]
 
 
 def l_shape(s):
-    """Build the L as 3 face polygons with chop lines on top and right faces.
+    """Build the L as 3 face polygons, one per visible cube face.
 
-    Each face's bar segment is a separate polygon so they're easy to style
-    independently.  Chop lines run along the bar length, splitting its width
-    into 3 equal strips on the top and right faces.
+    The L runs the full length of the cube on each face — edge to edge
+    on both the top and right faces, connected by the L-shaped elbow
+    on the left face.
     """
     hw = s / 6  # half-width → total bar width = s/3
-    bx = s * 2 / 3  # bar extent along x-axis on top / right faces
 
     # ── Top face (z=s plane) ─────────────────────────────────────────
     top = [
-        iso(bx, s / 2 + hw, s),
+        iso(s, s / 2 + hw, s),
         iso(0, s / 2 + hw, s),
         iso(0, s / 2 - hw, s),
-        iso(bx, s / 2 - hw, s),
+        iso(s, s / 2 - hw, s),
     ]
-    # lines run along x (the bar length), at 1/3 and 2/3 of the width
-    # top_chops = [
-    #     (iso(bx, s / 2 - hw / 3, s), iso(0, s / 2 - hw / 3, s)),
-    #     (iso(bx, s / 2 + hw / 3, s), iso(0, s / 2 + hw / 3, s)),
-    # ]
 
-    # ── Left face (x=0 plane) — the L-shaped elbow, no chop lines ───
+    # ── Left face (x=0 plane) — the L-shaped elbow ──────────────────
     left = [
         iso(0, s / 2 + hw, s),  # top outer
         iso(0, s / 2 - hw, s),  # top inner
@@ -78,52 +81,45 @@ def l_shape(s):
     # ── Right face (y=0 plane) ───────────────────────────────────────
     right = [
         iso(0, 0, s / 2 + hw),
-        iso(bx, 0, s / 2 + hw),
-        iso(bx, 0, s / 2 - hw),
+        iso(s, 0, s / 2 + hw),
+        iso(s, 0, s / 2 - hw),
         iso(0, 0, s / 2 - hw),
     ]
-    # lines run along x (the bar length), at 1/3 and 2/3 of the width
-    # right_chops = [
-    #     (iso(0, 0, s / 2 - hw / 3), iso(bx, 0, s / 2 - hw / 3)),
-    #     (iso(0, 0, s / 2 + hw / 3), iso(bx, 0, s / 2 + hw / 3)),
-    # ]
 
-    return {
-        "faces": [top, left, right],
-        # "chops": top_chops + right_chops,
-    }
+    return [top, left, right]
 
 
 def main():
     w, h = 300, 300
     dwg = svgwrite.Drawing("cube.svg", size=(w, h))
 
-    edges = cube_edges(SIDE)
-    shape = l_shape(SIDE)
+    v = cube_verts(SIDE)
+    hexagon = cube_hexagon(v)
+    edges = cube_edges(v)
+    faces = l_shape(SIDE)
 
-    all_pts = [p for edge in edges for p in edge]
-    for face in shape["faces"]:
-        all_pts += face
+    all_pts = hexagon[:]
     xs = [p[0] for p in all_pts]
     ys = [p[1] for p in all_pts]
     cx = w / 2 - (min(xs) + max(xs)) / 2
     cy = h / 2 - (min(ys) + max(ys)) / 2
 
+    # White filled cube silhouette with white outline
+    shifted_hex = [(x + cx, y + cy) for x, y in hexagon]
+    dwg.add(
+        dwg.polygon(
+            shifted_hex,
+            fill="white",
+            stroke="white",
+            stroke_width=18,
+            stroke_linejoin="round",
+        )
+    )
+
     # L shape — one polygon per face
-    for face in shape["faces"]:
+    for face in faces:
         shifted = [(x + cx, y + cy) for x, y in face]
         dwg.add(dwg.polygon(shifted, fill="black", stroke="none"))
-
-    # Chop lines — split top and right face bars into 3 strips along length
-    # for start, end in shape["chops"]:
-    #     dwg.add(
-    #         dwg.line(
-    #             start=(start[0] + cx, start[1] + cy),
-    #             end=(end[0] + cx, end[1] + cy),
-    #             stroke="white",
-    #             stroke_width=2,
-    #         )
-    #     )
 
     # Cube wireframe on top
     for start, end in edges:
