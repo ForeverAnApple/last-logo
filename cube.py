@@ -28,49 +28,70 @@ def cube_edges(s):
         "btr": iso(s, s, s),
     }
     return [
-        # Hexagon outline
-        (v["btr"], v["ftr"]),
-        (v["ftr"], v["fbr"]),
-        (v["fbr"], v["fbl"]),
-        (v["fbl"], v["bbl"]),
-        (v["bbl"], v["btl"]),
-        (v["btl"], v["btr"]),
-        # 3 internal edges from center
-        (v["ftl"], v["fbl"]),
-        (v["ftl"], v["ftr"]),
-        (v["ftl"], v["btl"]),
+        # # Hexagon outline
+        # (v["btr"], v["ftr"]),
+        # (v["ftr"], v["fbr"]),
+        # (v["fbr"], v["fbl"]),
+        # (v["fbl"], v["bbl"]),
+        # (v["bbl"], v["btl"]),
+        # (v["btl"], v["btr"]),
+        # # 3 internal edges from center
+        # (v["ftl"], v["fbl"]),
+        # (v["ftl"], v["ftr"]),
+        # (v["ftl"], v["btl"]),
     ]
 
 
-def l_bars(s):
-    """The L as two overlapping bar polygons — their overlap is the connector box.
+def l_shape(s):
+    """Build the L as 3 face polygons with chop lines on top and right faces.
 
-    A single polygon self-intersects in isometric 2D, so we split into:
-    - Vertical bar: top face → down the left face
-    - Horizontal bar: across the left face → right face
-    Start cap parallel to top-right edge (y-axis), end cap vertical (z-axis).
+    Each face's bar segment is a separate polygon so they're easy to style
+    independently.  Chop lines run along the bar length, splitting its width
+    into 3 equal strips on the top and right faces.
     """
-    hw = s / 6  # half-width → total width = s/3
+    hw = s / 6  # half-width → total bar width = s/3
+    bx = s * 2 / 3  # bar extent along x-axis on top / right faces
 
-    vertical = [
-        iso(s / 2, s / 2 + hw, s),  # start outer (top face)
-        iso(0, s / 2 + hw, s),  # outer at top-left edge
-        iso(0, s / 2 + hw, s / 2 - hw),  # outer at bottom of vertical bar
-        iso(0, s / 2 - hw, s / 2 - hw),  # inner at bottom of vertical bar
-        iso(0, s / 2 - hw, s),  # inner at top-left edge
-        iso(s / 2, s / 2 - hw, s),  # start inner (top face)
+    # ── Top face (z=s plane) ─────────────────────────────────────────
+    top = [
+        iso(bx, s / 2 + hw, s),
+        iso(0, s / 2 + hw, s),
+        iso(0, s / 2 - hw, s),
+        iso(bx, s / 2 - hw, s),
+    ]
+    # lines run along x (the bar length), at 1/3 and 2/3 of the width
+    # top_chops = [
+    #     (iso(bx, s / 2 - hw / 3, s), iso(0, s / 2 - hw / 3, s)),
+    #     (iso(bx, s / 2 + hw / 3, s), iso(0, s / 2 + hw / 3, s)),
+    # ]
+
+    # ── Left face (x=0 plane) — the L-shaped elbow, no chop lines ───
+    left = [
+        iso(0, s / 2 + hw, s),  # top outer
+        iso(0, s / 2 - hw, s),  # top inner
+        iso(0, s / 2 - hw, s / 2 + hw),  # inner corner of L
+        iso(0, 0, s / 2 + hw),  # bottom-right outer
+        iso(0, 0, s / 2 - hw),  # bottom-right inner
+        iso(0, s / 2 + hw, s / 2 - hw),  # bottom-left outer
     ]
 
-    horizontal = [
-        iso(0, s / 2 + hw, s / 2 + hw),  # left outer (overlaps vertical bar)
-        iso(0, 0, s / 2 + hw),  # outer at left-right boundary
-        iso(s / 2, 0, s / 2 + hw),  # end outer (right face)
-        iso(s / 2, 0, s / 2 - hw),  # end inner (right face)
-        iso(0, 0, s / 2 - hw),  # inner at left-right boundary
-        iso(0, s / 2 + hw, s / 2 - hw),  # left inner (overlaps vertical bar)
+    # ── Right face (y=0 plane) ───────────────────────────────────────
+    right = [
+        iso(0, 0, s / 2 + hw),
+        iso(bx, 0, s / 2 + hw),
+        iso(bx, 0, s / 2 - hw),
+        iso(0, 0, s / 2 - hw),
     ]
+    # lines run along x (the bar length), at 1/3 and 2/3 of the width
+    # right_chops = [
+    #     (iso(0, 0, s / 2 - hw / 3), iso(bx, 0, s / 2 - hw / 3)),
+    #     (iso(0, 0, s / 2 + hw / 3), iso(bx, 0, s / 2 + hw / 3)),
+    # ]
 
-    return vertical, horizontal
+    return {
+        "faces": [top, left, right],
+        # "chops": top_chops + right_chops,
+    }
 
 
 def main():
@@ -78,18 +99,31 @@ def main():
     dwg = svgwrite.Drawing("cube.svg", size=(w, h))
 
     edges = cube_edges(SIDE)
-    vert_bar, horiz_bar = l_bars(SIDE)
+    shape = l_shape(SIDE)
 
-    all_pts = [p for edge in edges for p in edge] + vert_bar + horiz_bar
+    all_pts = [p for edge in edges for p in edge]
+    for face in shape["faces"]:
+        all_pts += face
     xs = [p[0] for p in all_pts]
     ys = [p[1] for p in all_pts]
     cx = w / 2 - (min(xs) + max(xs)) / 2
     cy = h / 2 - (min(ys) + max(ys)) / 2
 
-    # L shape — two overlapping bars (overlap = connector box at the corner)
-    for bar in (vert_bar, horiz_bar):
-        shifted = [(x + cx, y + cy) for x, y in bar]
+    # L shape — one polygon per face
+    for face in shape["faces"]:
+        shifted = [(x + cx, y + cy) for x, y in face]
         dwg.add(dwg.polygon(shifted, fill="black", stroke="none"))
+
+    # Chop lines — split top and right face bars into 3 strips along length
+    # for start, end in shape["chops"]:
+    #     dwg.add(
+    #         dwg.line(
+    #             start=(start[0] + cx, start[1] + cy),
+    #             end=(end[0] + cx, end[1] + cy),
+    #             stroke="white",
+    #             stroke_width=2,
+    #         )
+    #     )
 
     # Cube wireframe on top
     for start, end in edges:
