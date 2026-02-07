@@ -90,19 +90,22 @@ def l_shape(s):
 
 
 def main():
-    w, h = 300, 300
-    dwg = svgwrite.Drawing("cube.svg", size=(w, h))
-
     v = cube_verts(SIDE)
     hexagon = cube_hexagon(v)
     edges = cube_edges(v)
     faces = l_shape(SIDE)
 
-    all_pts = hexagon[:]
-    xs = [p[0] for p in all_pts]
-    ys = [p[1] for p in all_pts]
-    cx = w / 2 - (min(xs) + max(xs)) / 2
-    cy = h / 2 - (min(ys) + max(ys)) / 2
+    # Compute tight bounding box around hexagon + stroke padding
+    stroke_w = 18
+    pad = stroke_w / 2
+    xs = [p[0] for p in hexagon]
+    ys = [p[1] for p in hexagon]
+    cx = -min(xs) + pad
+    cy = -min(ys) + pad
+    w = max(xs) - min(xs) + stroke_w
+    h = max(ys) - min(ys) + stroke_w
+
+    dwg = svgwrite.Drawing("icon.svg", size=(w, h))
 
     # White filled cube silhouette with white outline
     shifted_hex = [(x + cx, y + cy) for x, y in hexagon]
@@ -115,6 +118,39 @@ def main():
             stroke_linejoin="round",
         )
     )
+
+    # Colored regions in the areas "cut out" by the L shape
+    s = SIDE
+    hw = s / 6
+    color = "#5A9EA3"
+
+    # 1. Top face — rectangle to the right of the L bar (low-y strip)
+    top_right = [
+        iso(0, 0, s),
+        iso(s, 0, s),
+        iso(s, s / 2 - hw, s),
+        iso(0, s / 2 - hw, s),
+    ]
+
+    # 2. Left face — top-right square (the gap in the L elbow)
+    left_square = [
+        iso(0, 0, s),
+        iso(0, s / 2 - hw, s),
+        iso(0, s / 2 - hw, s / 2 + hw),
+        iso(0, 0, s / 2 + hw),
+    ]
+
+    # 3. Right face — top rectangle bar above the L
+    right_top = [
+        iso(0, 0, s),
+        iso(s, 0, s),
+        iso(s, 0, s / 2 + hw),
+        iso(0, 0, s / 2 + hw),
+    ]
+
+    for region in [top_right, left_square, right_top]:
+        shifted = [(x + cx, y + cy) for x, y in region]
+        dwg.add(dwg.polygon(shifted, fill=color, stroke="none"))
 
     # L shape — one polygon per face
     for face in faces:
@@ -134,7 +170,7 @@ def main():
         )
 
     dwg.save()
-    print(f"Saved cube.svg ({w}x{h})")
+    print(f"Saved icon.svg ({w}x{h})")
 
 
 if __name__ == "__main__":
