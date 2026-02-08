@@ -107,7 +107,7 @@ def make_text(w=50, h=70, bw=15, gap=25, d=15):
     return letters
 
 
-def main():
+def draw_wordmark(filename, fg="black", bg="white"):
     letters = make_text()
 
     # Compute tight bounding box from all geometry
@@ -119,48 +119,37 @@ def main():
     xs = [p[0] for p in all_pts]
     ys = [p[1] for p in all_pts]
 
-    pad = STROKE_W / 2 + 1  # half stroke + tiny margin
+    pad = STROKE_W / 2 + 1
     x_min, x_max = min(xs) - pad, max(xs) + pad
     y_min, y_max = min(ys) - pad, max(ys) + pad
     cw = x_max - x_min
     ch = y_max - y_min
 
-    dwg = svgwrite.Drawing("wordmark.svg", size=(cw, ch))
+    dwg = svgwrite.Drawing(filename, size=(cw, ch))
 
     def shift(pt):
         return (pt[0] - x_min, pt[1] - y_min)
 
-    # Draw each letter independently.
-    # Per bar: white faces mask previous bars' edges, then re-draw all
-    # previous front faces so the white never erases black (additive).
     for letter_bars, restore_edges in letters:
         prev_fronts = []
 
         for faces, edges in letter_bars:
             left, top, front = faces
 
-            # 1. White top/left faces — mask previous bars' edges
             for face in (left, top):
-                dwg.add(
-                    dwg.polygon([shift(p) for p in face], fill="white", stroke="none")
-                )
+                dwg.add(dwg.polygon([shift(p) for p in face], fill=bg, stroke="none"))
 
-            # 2. Re-draw all previous front faces — restore black the white just erased
             for pf in prev_fronts:
-                dwg.add(
-                    dwg.polygon([shift(p) for p in pf], fill="black", stroke="none")
-                )
+                dwg.add(dwg.polygon([shift(p) for p in pf], fill=fg, stroke="none"))
 
-            # 3. This bar's front face
-            dwg.add(dwg.polygon([shift(p) for p in front], fill="black", stroke="none"))
+            dwg.add(dwg.polygon([shift(p) for p in front], fill=fg, stroke="none"))
 
-            # 4. This bar's edges
             for s, e in edges:
                 dwg.add(
                     dwg.line(
                         start=shift(s),
                         end=shift(e),
-                        stroke="black",
+                        stroke=fg,
                         stroke_width=STROKE_W,
                         stroke_linecap="round",
                     )
@@ -168,26 +157,18 @@ def main():
 
             prev_fronts.append(front)
 
-        # Cleanup pass: re-draw all faces to mask stray edges from later bars
-        # whose edges bled through earlier bars' white faces.
+        # Cleanup pass
         prev_fronts = []
         for faces, _ in letter_bars:
             left, top, front = faces
             for face in (left, top):
-                dwg.add(
-                    dwg.polygon([shift(p) for p in face], fill="white", stroke="none")
-                )
+                dwg.add(dwg.polygon([shift(p) for p in face], fill=bg, stroke="none"))
             for pf in prev_fronts:
-                dwg.add(
-                    dwg.polygon([shift(p) for p in pf], fill="black", stroke="none")
-                )
-            dwg.add(dwg.polygon([shift(p) for p in front], fill="black", stroke="none"))
+                dwg.add(dwg.polygon([shift(p) for p in pf], fill=fg, stroke="none"))
+            dwg.add(dwg.polygon([shift(p) for p in front], fill=fg, stroke="none"))
             prev_fronts.append(front)
 
-        # Restore specific front-face edges of the last bar. The cleanup's
-        # white faces can erase edges at shared boundaries. Only re-draw
-        # edges that don't share a boundary with a previous bar — shared
-        # edges are already correctly rendered by the cleanup.
+        # Restore specific edges erased by the cleanup
         _, last_edges = letter_bars[-1]
         for i, s_inset, e_inset in restore_edges:
             s, e = last_edges[i]
@@ -201,14 +182,19 @@ def main():
                 dwg.line(
                     start=shift(s),
                     end=shift(e),
-                    stroke="black",
+                    stroke=fg,
                     stroke_width=STROKE_W,
                     stroke_linecap="round",
                 )
             )
 
     dwg.save()
-    print(f"Saved wordmark.svg ({cw}x{ch})")
+    print(f"Saved {filename} ({cw:.0f}x{ch:.0f})")
+
+
+def main():
+    draw_wordmark("wordmark-light.svg", fg="black", bg="white")
+    draw_wordmark("wordmark-dark.svg", fg="white", bg="black")
 
 
 if __name__ == "__main__":

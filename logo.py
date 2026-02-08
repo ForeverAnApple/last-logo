@@ -6,7 +6,7 @@ from icon import iso as cube_iso
 from wordmark import make_text, STROKE_W
 
 
-def draw_cube(dwg, cx, cy):
+def draw_cube(dwg, cx, cy, fg="black", bg="white"):
     """Draw the cube icon shifted by (cx, cy)."""
     v = cube_verts(SIDE)
     hexagon = cube_hexagon(v)
@@ -16,16 +16,8 @@ def draw_cube(dwg, cx, cy):
     def shift(pt):
         return (pt[0] + cx, pt[1] + cy)
 
-    # White silhouette
-    dwg.add(
-        dwg.polygon(
-            [shift(p) for p in hexagon],
-            fill="white",
-            stroke="white",
-            stroke_width=18,
-            stroke_linejoin="round",
-        )
-    )
+    # Filled cube background
+    dwg.add(dwg.polygon([shift(p) for p in hexagon], fill=bg, stroke="none"))
 
     # Colored regions
     s = SIDE
@@ -56,7 +48,7 @@ def draw_cube(dwg, cx, cy):
 
     # L shape faces
     for face in faces:
-        dwg.add(dwg.polygon([shift(p) for p in face], fill="black", stroke="none"))
+        dwg.add(dwg.polygon([shift(p) for p in face], fill=fg, stroke="none"))
 
     # Wireframe
     for start, end in edges:
@@ -64,14 +56,14 @@ def draw_cube(dwg, cx, cy):
             dwg.line(
                 start=shift(start),
                 end=shift(end),
-                stroke="black",
+                stroke=fg,
                 stroke_width=6,
                 stroke_linecap="round",
             )
         )
 
 
-def draw_text(dwg, cx, cy, **text_kw):
+def draw_text(dwg, cx, cy, fg="black", bg="white", **text_kw):
     """Draw the LAST text shifted by (cx, cy)."""
     letters = make_text(**text_kw)
 
@@ -85,23 +77,19 @@ def draw_text(dwg, cx, cy, **text_kw):
             left, top, front = faces
 
             for face in (left, top):
-                dwg.add(
-                    dwg.polygon([shift(p) for p in face], fill="white", stroke="none")
-                )
+                dwg.add(dwg.polygon([shift(p) for p in face], fill=bg, stroke="none"))
 
             for pf in prev_fronts:
-                dwg.add(
-                    dwg.polygon([shift(p) for p in pf], fill="black", stroke="none")
-                )
+                dwg.add(dwg.polygon([shift(p) for p in pf], fill=fg, stroke="none"))
 
-            dwg.add(dwg.polygon([shift(p) for p in front], fill="black", stroke="none"))
+            dwg.add(dwg.polygon([shift(p) for p in front], fill=fg, stroke="none"))
 
             for s, e in edges:
                 dwg.add(
                     dwg.line(
                         start=shift(s),
                         end=shift(e),
-                        stroke="black",
+                        stroke=fg,
                         stroke_width=STROKE_W,
                         stroke_linecap="round",
                     )
@@ -113,14 +101,10 @@ def draw_text(dwg, cx, cy, **text_kw):
         for faces, _ in letter_bars:
             left, top, front = faces
             for face in (left, top):
-                dwg.add(
-                    dwg.polygon([shift(p) for p in face], fill="white", stroke="none")
-                )
+                dwg.add(dwg.polygon([shift(p) for p in face], fill=bg, stroke="none"))
             for pf in prev_fronts:
-                dwg.add(
-                    dwg.polygon([shift(p) for p in pf], fill="black", stroke="none")
-                )
-            dwg.add(dwg.polygon([shift(p) for p in front], fill="black", stroke="none"))
+                dwg.add(dwg.polygon([shift(p) for p in pf], fill=fg, stroke="none"))
+            dwg.add(dwg.polygon([shift(p) for p in front], fill=fg, stroke="none"))
             prev_fronts.append(front)
 
         # Restore specific edges erased by the cleanup
@@ -137,7 +121,7 @@ def draw_text(dwg, cx, cy, **text_kw):
                 dwg.line(
                     start=shift(s),
                     end=shift(e),
-                    stroke="black",
+                    stroke=fg,
                     stroke_width=STROKE_W,
                     stroke_linecap="round",
                 )
@@ -148,7 +132,7 @@ def get_cube_bounds():
     """Bounding box (x_min, y_min, x_max, y_max) of the cube."""
     v = cube_verts(SIDE)
     hexagon = cube_hexagon(v)
-    pad = 18 / 2  # half of cube's stroke_width
+    pad = 6 / 2  # half of wireframe stroke_width
     xs = [p[0] for p in hexagon]
     ys = [p[1] for p in hexagon]
     return min(xs) - pad, min(ys) - pad, max(xs) + pad, max(ys) + pad
@@ -203,21 +187,21 @@ def main():
     total_w = cube_w + gap + text_w
     max_h = max(cube_h, text_h)
 
-    dwg = svgwrite.Drawing("logo.svg", size=(total_w, max_h))
-
-    # Cube: left side, vertically centered
+    # Shared offsets
     cube_cx = -cb[0]
     cube_cy = -cb[1] + (max_h - cube_h) / 2
-
-    # Text: right of cube + gap, vertically centered
     text_cx = cube_w + gap - tb[0]
     text_cy = -tb[1] + (max_h - text_h) / 2
 
-    draw_cube(dwg, cube_cx, cube_cy)
-    draw_text(dwg, text_cx, text_cy, **text_kw)
-
-    dwg.save()
-    print(f"Saved logo.svg ({total_w:.0f}x{max_h:.0f})")
+    for filename, fg, bg in [
+        ("logo-light.svg", "black", "white"),
+        ("logo-dark.svg", "white", "black"),
+    ]:
+        dwg = svgwrite.Drawing(filename, size=(total_w, max_h))
+        draw_cube(dwg, cube_cx, cube_cy, fg=fg, bg=bg)
+        draw_text(dwg, text_cx, text_cy, fg=fg, bg=bg, **text_kw)
+        dwg.save()
+        print(f"Saved {filename} ({total_w:.0f}x{max_h:.0f})")
 
 
 if __name__ == "__main__":

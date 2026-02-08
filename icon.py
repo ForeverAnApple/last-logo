@@ -89,58 +89,45 @@ def l_shape(s):
     return [top, left, right]
 
 
-def main():
+def draw_icon(filename, fg="black", bg="white"):
     v = cube_verts(SIDE)
     hexagon = cube_hexagon(v)
     edges = cube_edges(v)
     faces = l_shape(SIDE)
 
-    # Compute tight bounding box around hexagon + stroke padding
-    stroke_w = 18
-    pad = stroke_w / 2
+    pad = 6 / 2  # half of wireframe stroke_width
     xs = [p[0] for p in hexagon]
     ys = [p[1] for p in hexagon]
     cx = -min(xs) + pad
     cy = -min(ys) + pad
-    w = max(xs) - min(xs) + stroke_w
-    h = max(ys) - min(ys) + stroke_w
+    w = max(xs) - min(xs) + 6
+    h = max(ys) - min(ys) + 6
 
-    dwg = svgwrite.Drawing("icon.svg", size=(w, h))
+    dwg = svgwrite.Drawing(filename, size=(w, h))
 
-    # White filled cube silhouette with white outline
-    shifted_hex = [(x + cx, y + cy) for x, y in hexagon]
-    dwg.add(
-        dwg.polygon(
-            shifted_hex,
-            fill="white",
-            stroke="white",
-            stroke_width=18,
-            stroke_linejoin="round",
-        )
-    )
+    def shift(pt):
+        return (pt[0] + cx, pt[1] + cy)
 
-    # Colored regions in the areas "cut out" by the L shape
+    # Filled cube background
+    dwg.add(dwg.polygon([shift(p) for p in hexagon], fill=bg, stroke="none"))
+
+    # Colored regions
     s = SIDE
     hw = s / 6
     color = "#5A9EA3"
 
-    # 1. Top face — rectangle to the right of the L bar (low-y strip)
     top_right = [
         iso(0, 0, s),
         iso(s, 0, s),
         iso(s, s / 2 - hw, s),
         iso(0, s / 2 - hw, s),
     ]
-
-    # 2. Left face — top-right square (the gap in the L elbow)
     left_square = [
         iso(0, 0, s),
         iso(0, s / 2 - hw, s),
         iso(0, s / 2 - hw, s / 2 + hw),
         iso(0, 0, s / 2 + hw),
     ]
-
-    # 3. Right face — top rectangle bar above the L
     right_top = [
         iso(0, 0, s),
         iso(s, 0, s),
@@ -149,28 +136,31 @@ def main():
     ]
 
     for region in [top_right, left_square, right_top]:
-        shifted = [(x + cx, y + cy) for x, y in region]
-        dwg.add(dwg.polygon(shifted, fill=color, stroke="none"))
+        dwg.add(dwg.polygon([shift(p) for p in region], fill=color, stroke="none"))
 
-    # L shape — one polygon per face
+    # L shape faces
     for face in faces:
-        shifted = [(x + cx, y + cy) for x, y in face]
-        dwg.add(dwg.polygon(shifted, fill="black", stroke="none"))
+        dwg.add(dwg.polygon([shift(p) for p in face], fill=fg, stroke="none"))
 
-    # Cube wireframe on top
+    # Wireframe
     for start, end in edges:
         dwg.add(
             dwg.line(
-                start=(start[0] + cx, start[1] + cy),
-                end=(end[0] + cx, end[1] + cy),
-                stroke="black",
+                start=shift(start),
+                end=shift(end),
+                stroke=fg,
                 stroke_width=6,
                 stroke_linecap="round",
             )
         )
 
     dwg.save()
-    print(f"Saved icon.svg ({w}x{h})")
+    print(f"Saved {filename} ({w:.0f}x{h:.0f})")
+
+
+def main():
+    draw_icon("icon-light.svg", fg="black", bg="white")
+    draw_icon("icon-dark.svg", fg="white", bg="black")
 
 
 if __name__ == "__main__":
