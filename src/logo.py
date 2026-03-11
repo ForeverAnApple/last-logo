@@ -1,9 +1,12 @@
 import math
+from pathlib import Path
 import svgwrite
 
 from icon import SIDE, cube_verts, cube_hexagon, cube_edges, l_shape
 from icon import iso as cube_iso
 from wordmark import make_text, STROKE_W
+
+OUTPUT_DIR = Path(__file__).resolve().parent.parent / "output"
 
 
 def draw_cube(dwg, cx, cy, fg="black", bg="white"):
@@ -194,8 +197,8 @@ def main():
     text_cy = -tb[1] + (max_h - text_h) / 2
 
     for filename, fg, bg in [
-        ("logo-light.svg", "black", "white"),
-        ("logo-dark.svg", "white", "black"),
+        (str(OUTPUT_DIR / "logo-light.svg"), "black", "white"),
+        (str(OUTPUT_DIR / "logo-dark.svg"), "white", "black"),
     ]:
         dwg = svgwrite.Drawing(filename, size=(total_w, max_h))
         draw_cube(dwg, cube_cx, cube_cy, fg=fg, bg=bg)

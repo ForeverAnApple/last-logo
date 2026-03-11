@@ -1,5 +1,8 @@
 import math
+from pathlib import Path
 import svgwrite
+
+OUTPUT_DIR = Path(__file__).resolve().parent.parent / "output"
 
 SIDE = 100
 # Isometric axes: 30° from horizontal
@@ -159,8 +162,8 @@ def draw_icon(filename, fg="black", bg="white"):
 
 
 def main():
-    draw_icon("icon-light.svg", fg="black", bg="white")
-    draw_icon("icon-dark.svg", fg="white", bg="black")
+    draw_icon(str(OUTPUT_DIR / "icon-light.svg"), fg="black", bg="white")
+    draw_icon(str(OUTPUT_DIR / "icon-dark.svg"), fg="white", bg="black")
 
 
 if __name__ == "__main__":

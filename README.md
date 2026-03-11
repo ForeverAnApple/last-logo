@@ -2,8 +2,6 @@
 
 **Programmatic SVG logo generator -- isometric logo for last.dev.**
 
-Output: `cube.svg` (300x300). See it in the repo after running the script.
-
 ## Setup
 
 ### Nix + direnv (recommended)
@@ -22,7 +20,19 @@ pip install -r requirements.txt
 ## Usage
 
 ```sh
-python cube.py   # writes cube.svg
+python src/icon.py       # writes output/icon-{light,dark}.svg
+python src/wordmark.py   # writes output/wordmark-{light,dark}.svg
+python src/logo.py       # writes output/logo-{light,dark}.svg
+```
+
+## Project Structure
+
+```
+src/           Python generators
+  icon.py        standalone cube icon
+  wordmark.py    isometric "LAST" text
+  logo.py        combined icon + wordmark
+output/        generated assets (SVG + PNG)
 ```
 
 ## Dependencies

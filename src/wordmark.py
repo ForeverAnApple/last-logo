@@ -1,5 +1,8 @@
 import math
+from pathlib import Path
 import svgwrite
+
+OUTPUT_DIR = Path(__file__).resolve().parent.parent / "output"
 
 ANG = math.radians(30)
 IX = (math.cos(ANG), -math.sin(ANG))
@@ -193,8 +196,8 @@ def draw_wordmark(filename, fg="black", bg="white"):
 
 
 def main():
-    draw_wordmark("wordmark-light.svg", fg="black", bg="white")
-    draw_wordmark("wordmark-dark.svg", fg="white", bg="black")
+    draw_wordmark(str(OUTPUT_DIR / "wordmark-light.svg"), fg="black", bg="white")
+    draw_wordmark(str(OUTPUT_DIR / "wordmark-dark.svg"), fg="white", bg="black")
 
 
 if __name__ == "__main__":
